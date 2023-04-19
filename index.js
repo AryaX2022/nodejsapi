@@ -24,7 +24,7 @@ const serviceAccount = {
 const cors = require('cors');
 app.use(cors({
     //origin: 'http://127.0.0.1:5173'
-    origin: 'https://prereleasedmodel123.web.app'
+    origin: ['https://ai-lib.web.app','https://ai-bridge.web.app','https://model4ai.web.app','https://ai1001.web.app']
 }));
 
 initializeApp({
