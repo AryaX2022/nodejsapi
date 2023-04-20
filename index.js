@@ -73,28 +73,61 @@ app.get('/productsPaged/:pageIndex', async function(req, res) {
 
     let ratingCountStart = 5000;
     let ratingCountEnd = 200;
+
     if(pageIndex == 2) {
         ratingCountStart = 200;
         ratingCountEnd = 100;
     }
     if(pageIndex == 3) {
         ratingCountStart = 100;
-        ratingCountEnd = 50;
+        ratingCountEnd = 80;
     }
     if(pageIndex == 4) {
-        ratingCountStart = 50;
-        ratingCountEnd = 30;
+        ratingCountStart = 80;
+        ratingCountEnd = 60;
     }
     if(pageIndex == 5) {
-        ratingCountStart = 30;
-        ratingCountEnd = 20;
+        ratingCountStart = 60;
+        ratingCountEnd = 50;
     }
     if(pageIndex == 6) {
+        ratingCountStart = 50;
+        ratingCountEnd = 45;
+    }
+    if(pageIndex == 7) {
+        ratingCountStart = 45;
+        ratingCountEnd = 40;
+    }
+    if(pageIndex == 8) {
+        ratingCountStart = 40;
+        ratingCountEnd = 35;
+    }
+    if(pageIndex == 9) {
+        ratingCountStart = 35;
+        ratingCountEnd = 30;
+    }
+    if(pageIndex == 10) {
+        ratingCountStart = 30;
+        ratingCountEnd = 25;
+    }
+    if(pageIndex == 11) {
+        ratingCountStart = 25;
+        ratingCountEnd = 22;
+    }
+    if(pageIndex == 12) {
+        ratingCountStart = 22;
+        ratingCountEnd = 20;
+    }
+    if(pageIndex == 13) {
         ratingCountStart = 20;
+        ratingCountEnd = 10;
+    }
+    if(pageIndex == 14) {
+        ratingCountStart = 10;
         ratingCountEnd = 0;
     }
 
-    if(pageIndex > 6) {
+    if(pageIndex > 14) {
         res.json({items:[]});
         return;
     }
@@ -106,7 +139,7 @@ app.get('/productsPaged/:pageIndex', async function(req, res) {
         .select('id','name','coverImgUrl','stats')
         .get();
 
-    //console.log(models);
+    console.log(models.size);
 
     var products = []
     models.forEach((doc) => {
