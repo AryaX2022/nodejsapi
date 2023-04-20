@@ -67,11 +67,62 @@ function compare( a, b ) {
     return 0;
 }
 
+app.get('/productsPaged/:pageIndex', async function(req, res) {
+
+    let pageIndex = req.params.pageIndex;
+
+    let ratingCountStart = 5000;
+    let ratingCountEnd = 200;
+    if(pageIndex == 2) {
+        ratingCountStart = 200;
+        ratingCountEnd = 100;
+    }
+    if(pageIndex == 3) {
+        ratingCountStart = 100;
+        ratingCountEnd = 50;
+    }
+    if(pageIndex == 4) {
+        ratingCountStart = 50;
+        ratingCountEnd = 30;
+    }
+    if(pageIndex == 5) {
+        ratingCountStart = 30;
+        ratingCountEnd = 20;
+    }
+    if(pageIndex == 6) {
+        ratingCountStart = 20;
+        ratingCountEnd = 0;
+    }
+
+    if(pageIndex > 6) {
+        res.json({items:[]});
+        return;
+    }
+
+
+    const models = await db.collection(tname)
+        .orderBy('stats.ratingCount','desc')
+        .startAt(ratingCountStart).endBefore(ratingCountEnd)
+        .select('id','name','coverImgUrl','stats')
+        .get();
+
+    //console.log(models);
+
+    var products = []
+    models.forEach((doc) => {
+        products.push(doc.data());
+    });
+    products.sort(compare);
+    //return products;
+    res.json({items:products});
+
+});
+
 app.get('/productsHome', async function(req, res) {
 
     let modelsRef = await db.collection(tname)
 	const models = await modelsRef.select('id','name','coverImgUrl','stats').get();
-	console.log(models);
+	//console.log(models);
     var products = []
     models.forEach((doc) => {
         products.push(doc.data());
