@@ -23,8 +23,8 @@ const serviceAccount = {
 
 const cors = require('cors');
 app.use(cors({
-    //origin: 'http://127.0.0.1:5174'
-    origin: ['https://ai-lib.web.app','https://ai-bridge.web.app','https://model4ai.web.app','https://ai1001.web.app']
+    //origin: ['http://127.0.0.1:5174','http://127.0.0.1:5173']
+    origin: ['http://127.0.0.1:5174','http://127.0.0.1:5173', 'https://ai-lib.web.app','https://ai-bridge.web.app','https://model4ai.web.app','https://ai1001.web.app']
 }));
 
 initializeApp({
@@ -37,6 +37,7 @@ const tname = "models";
 const { collection, addDoc, getDocs, setDoc, doc, updateDoc, increment, Timestamp, serverTimestamp  } = require('firebase-admin/firestore');
 
 app.get('/', (req, res) => {
+    console.log("Good");
 	res.json({"msg":"Alive"});
 });
 
