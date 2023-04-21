@@ -23,7 +23,7 @@ const serviceAccount = {
 
 const cors = require('cors');
 app.use(cors({
-    //origin: 'http://127.0.0.1:5173'
+    //origin: 'http://127.0.0.1:5174'
     origin: ['https://ai-lib.web.app','https://ai-bridge.web.app','https://model4ai.web.app','https://ai1001.web.app']
 }));
 
@@ -72,62 +72,62 @@ app.get('/productsPaged/:pageIndex', async function(req, res) {
     let pageIndex = req.params.pageIndex;
 
     let ratingCountStart = 5000;
-    let ratingCountEnd = 200;
+    let ratingCountEnd = 80;
 
+    // if(pageIndex == 2) {
+    //     ratingCountStart = 200;
+    //     ratingCountEnd = 100;
+    // }
+    // if(pageIndex == 3) {
+    //     ratingCountStart = 100;
+    //     ratingCountEnd = 80;
+    // }
     if(pageIndex == 2) {
-        ratingCountStart = 200;
-        ratingCountEnd = 100;
-    }
-    if(pageIndex == 3) {
-        ratingCountStart = 100;
-        ratingCountEnd = 80;
-    }
-    if(pageIndex == 4) {
         ratingCountStart = 80;
         ratingCountEnd = 60;
     }
-    if(pageIndex == 5) {
+    if(pageIndex == 3) {
         ratingCountStart = 60;
         ratingCountEnd = 50;
     }
-    if(pageIndex == 6) {
+    if(pageIndex == 4) {
         ratingCountStart = 50;
         ratingCountEnd = 45;
     }
-    if(pageIndex == 7) {
+    if(pageIndex == 5) {
         ratingCountStart = 45;
         ratingCountEnd = 40;
     }
-    if(pageIndex == 8) {
+    if(pageIndex == 6) {
         ratingCountStart = 40;
         ratingCountEnd = 35;
     }
-    if(pageIndex == 9) {
+    if(pageIndex == 7) {
         ratingCountStart = 35;
         ratingCountEnd = 30;
     }
-    if(pageIndex == 10) {
+    if(pageIndex == 8) {
         ratingCountStart = 30;
         ratingCountEnd = 25;
     }
-    if(pageIndex == 11) {
+    if(pageIndex == 9) {
         ratingCountStart = 25;
         ratingCountEnd = 22;
     }
-    if(pageIndex == 12) {
+    if(pageIndex == 10) {
         ratingCountStart = 22;
         ratingCountEnd = 20;
     }
-    if(pageIndex == 13) {
+    if(pageIndex == 11) {
         ratingCountStart = 20;
         ratingCountEnd = 10;
     }
-    if(pageIndex == 14) {
+    if(pageIndex == 12) {
         ratingCountStart = 10;
         ratingCountEnd = 0;
     }
 
-    if(pageIndex > 14) {
+    if(pageIndex > 12) {
         res.json({items:[]});
         return;
     }
