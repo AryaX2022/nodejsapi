@@ -34,14 +34,19 @@ initializeApp({
 const db = getFirestore();
 const tname = "models";
 
-const { collection, addDoc, getDocs, setDoc, doc, updateDoc, increment, Timestamp, serverTimestamp  } = require('firebase-admin/firestore');
+const { collection, addDoc, getDocs, setDoc, doc, updateDoc, increment, FieldValue, Timestamp, serverTimestamp  } = require('firebase-admin/firestore');
 
 app.get('/', (req, res) => {
     console.log("Good");
 	res.json({"msg":"Alive"});
 });
 
-app.get('/transfer', (req, res) => {
+app.get('/transfer', async function(req, res){
+    let id = req.query.id;
+    const modelRef = db.collection(tname).doc(id.toString());
+    const result = await modelRef.update({"stats.downloadCount": FieldValue.increment(1)});
+    //res.json({ret:result});
+
   let url = req.query.url;
   console.log(url);
   //res.send(`<h1>${req.params.id}</h1>`);
@@ -186,6 +191,35 @@ app.get('/product/:id', async function(req, res) {
 	const model = await db.collection(tname).doc(req.params.id.toString()).get();
 	res.json({item:model.data()});  
 });
+
+app.get('/urlCopied/:id', async function(req, res) {
+    console.log(req.params.id);
+    const modelRef = db.collection(tname).doc(req.params.id.toString());
+    const result = await modelRef.update({"stats.urlcopied": FieldValue.increment(1)});
+    res.json({ret:result});
+});
+
+app.get('/favorite/:id', async function(req, res) {
+    console.log(req.params.id);
+    const modelRef = db.collection(tname).doc(req.params.id.toString());
+    const result = await modelRef.update({"stats.favoriteCount": FieldValue.increment(1)});
+    res.json({ret:result});
+});
+
+app.get('/rating/:id', async function(req, res) {
+    console.log(req.params.id);
+    let rating = req.query.rating;
+    //console.log(rating);
+    const modelRef = db.collection(tname).doc(req.params.id.toString());
+    const model = await modelRef.get();
+    //console.log(model.data().stats.rating);
+    let newrating = (model.data().stats.rating * model.data().stats.ratingCount + parseFloat(rating))/(model.data().stats.ratingCount+1);
+    //console.log(newrating);
+    const result = await modelRef.update({"stats.ratingCount": FieldValue.increment(1), "stats.rating":newrating});
+
+    res.json({ret:newrating});
+});
+
 
 
 app.listen(3001, () => console.log(('listening :)')))
