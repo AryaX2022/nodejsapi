@@ -5,9 +5,16 @@ const https = require('https');
 const { initializeApp, cert } = require('firebase-admin/app');
 const { getFirestore } = require('firebase-admin/firestore');
 
+var jwt = require("jsonwebtoken");
+var bodyParser = require('body-parser')
+// create application/json parser
+var jsonParser = bodyParser.json()
+// create application/x-www-form-urlencoded parser
+var urlencodedParser = bodyParser.urlencoded({ extended: false })
+
 require('dotenv').config()
 //console.log(process.env.USRN);
-
+const secret = "arya-secret"
 const serviceAccount = {
     "type": "service_account",
     "project_id": process.env.PROJ_ID,
@@ -32,9 +39,10 @@ initializeApp({
 });
 
 const db = getFirestore();
-const tname = "models";
+// const tname = "models";
+const tname = "modelsV2";
 
-const { collection, addDoc, getDocs, setDoc, doc, updateDoc, increment, FieldValue, Timestamp, serverTimestamp  } = require('firebase-admin/firestore');
+const { collection, DocumentData, addDoc, getDocs, setDoc, doc, updateDoc, increment, FieldValue, Timestamp, serverTimestamp  } = require('firebase-admin/firestore');
 
 app.get('/', (req, res) => {
     console.log("Good");
@@ -73,9 +81,10 @@ function compare( a, b ) {
     return 0;
 }
 
-app.get('/productsPaged/:pageIndex', async function(req, res) {
+app.get('/productsPaged/:pageIndex/:tag', async function(req, res) {
 
     let pageIndex = req.params.pageIndex;
+    let tag = req.params.tag;
 
     let ratingCountStart = 5000;
     let ratingCountEnd = 80;
@@ -139,11 +148,17 @@ app.get('/productsPaged/:pageIndex', async function(req, res) {
     }
 
 
-    const models = await db.collection(tname)
+    let querySnapshot = db.collection(tname)
+
+    if(tag != "all") {
+        querySnapshot = querySnapshot.where('tags', 'array-contains', tag);
+    }
+    const models = await querySnapshot
         .orderBy('stats.ratingCount','desc')
         .startAt(ratingCountStart).endBefore(ratingCountEnd)
-        .select('id','name','coverImgUrl','stats')
+        .select('id','name','coverImg','stats','flag')
         .get();
+
 
     console.log(models.size);
 
@@ -220,6 +235,144 @@ app.get('/rating/:id', async function(req, res) {
     res.json({ret:newrating});
 });
 
+app.post('/auth/signin', jsonParser, async function (request, response) {
 
+    console.log(request.body);
+    const userRef = db.collection('musers');
+    const snapshot = await userRef.where('username', '==', request.body.username).where('password', '==', request.body.password).get();
+    if (snapshot.empty) {
+        console.log('No user match.');
+        response.json({ret:1, message:'用户名或密码不正确'});
+    } else {
+
+        var token = jwt.sign({ id: request.body.username }, secret);
+
+        snapshot.forEach(doc => {
+            response.json({ret:0, user: {username: doc.data().username,avatar: doc.data().avatar, accessToken: token}});
+        });
+    }
+});
+
+app.post('/auth/signup', jsonParser, async function (request, response) {
+    console.log(request.body);
+    // Add a new document in collection "cities" with ID 'LA'
+    const res = await db.collection('musers').doc(request.body.username).set(request.body);
+    response.json({data:{message:'注册成功'}});
+});
+
+app.get('/user', async function (request, response) {
+    let token = request.headers["x-access-token"];
+
+    if (!token) {
+        return response.status(403).send({
+            message: "No token provided!"
+        });
+    }
+
+    jwt.verify(token, secret, (err, decoded) => {
+        if (err) {
+            return response.status(401).send({
+                message: "Unauthorized!"
+            });
+        }
+        request.userId = decoded.id;
+    });
+
+    console.log(request.userId);
+    response.json({ret:0});
+
+});
+
+// const multer = require("multer");
+// const dest = multer({ dest: "files/" });
+// function uploadFiles(req, res) {
+//     console.log(req);
+//     console.log(req.files);
+//     console.log(req.body);
+//     res.json({ret: req.files});
+// }
+//
+// app.post("/upload", dest.array("image"), uploadFiles);
+
+app.post('/post/new', jsonParser,async function (request, response) {
+    let token = request.headers["x-access-token"];
+
+    if (!token) {
+        return response.status(403).send({
+            message: "No token provided!"
+        });
+    }
+
+    jwt.verify(token, secret, (err, decoded) => {
+        if (err) {
+            return response.status(401).send({
+                message: "Unauthorized!"
+            });
+        }
+        //request.userId = decoded.id;
+    });
+
+    //console.log(request.userId);
+    //console.log(request.body);
+    request.body.createtime = new Date();
+    const res = await db.collection('mposts').add(request.body);
+
+    response.json({ret:res.id});
+
+});
+
+app.get('/posts', async function(req, res) {
+
+    const postsShot = await db.collection('mposts').get();
+    var posts = []
+    postsShot.forEach((doc) => {
+        let data = doc.data();
+        data.id = doc.id;
+        posts.push(data);
+    });
+    //return products;
+    res.json({items:posts});
+
+});
+
+app.get('/post/:id', async function(req, res) {
+    console.log(req.params.id);
+    const model = await db.collection('mposts').doc(req.params.id.toString()).get();
+    res.json({item:model.data()});
+});
+
+app.post('/post/reply/:id', jsonParser, async function(req, res) {
+    console.log(req.params.id);
+    const modelRef = db.collection('mposts').doc(req.params.id.toString());
+    const model = await modelRef.get();
+    let replies = []
+    if(model.data().replies != null) {
+        replies = model.data().replies;
+    }
+    replies.push(req.body);
+    const result = await modelRef.set({"replies": replies},{merge:true});
+    res.json({ret:result});
+});
+
+
+app.post('/model/comments/:id', jsonParser, async function(req, res) {
+    console.log(req.params.id);
+    const modelRef = db.collection('mcomments').doc(req.params.id.toString());
+    const model = await modelRef.get();
+    let comments = []
+    if(model != null && model.data() != null && model.data().comments != null) {
+        comments = model.data().comments;
+    }
+    console.log(req.body);
+    req.body.createtime = new Date();
+    comments.push(req.body);
+    const result = await modelRef.set({"comments": comments});
+    res.json({ret:result});
+});
+app.get('/model/comments/:id', async function(req, res) {
+    console.log(req.params.id);
+    const model = await db.collection('mcomments').doc(req.params.id.toString()).get();
+    res.json({item:model.data()});
+});
 
 app.listen(3001, () => console.log(('listening :)')))
