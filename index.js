@@ -86,63 +86,15 @@ app.get('/productsPaged/:pageIndex/:tag', async function(req, res) {
     let pageIndex = req.params.pageIndex;
     let tag = req.params.tag;
 
-    let ratingCountStart = 5000;
-    let ratingCountEnd = 80;
+    let ratingCountStart = 9999;
+    let ratingCountEnd = 100;
 
-    // if(pageIndex == 2) {
-    //     ratingCountStart = 200;
-    //     ratingCountEnd = 100;
-    // }
-    // if(pageIndex == 3) {
-    //     ratingCountStart = 100;
-    //     ratingCountEnd = 80;
-    // }
-    if(pageIndex == 2) {
-        ratingCountStart = 80;
-        ratingCountEnd = 60;
-    }
-    if(pageIndex == 3) {
-        ratingCountStart = 60;
-        ratingCountEnd = 50;
-    }
-    if(pageIndex == 4) {
-        ratingCountStart = 50;
-        ratingCountEnd = 45;
-    }
-    if(pageIndex == 5) {
-        ratingCountStart = 45;
-        ratingCountEnd = 40;
-    }
-    if(pageIndex == 6) {
-        ratingCountStart = 40;
-        ratingCountEnd = 35;
-    }
-    if(pageIndex == 7) {
-        ratingCountStart = 35;
-        ratingCountEnd = 30;
-    }
-    if(pageIndex == 8) {
-        ratingCountStart = 30;
-        ratingCountEnd = 25;
-    }
-    if(pageIndex == 9) {
-        ratingCountStart = 25;
-        ratingCountEnd = 22;
-    }
-    if(pageIndex == 10) {
-        ratingCountStart = 22;
-        ratingCountEnd = 20;
-    }
-    if(pageIndex == 11) {
-        ratingCountStart = 20;
-        ratingCountEnd = 10;
-    }
-    if(pageIndex == 12) {
-        ratingCountStart = 10;
-        ratingCountEnd = 0;
+    if(pageIndex >= 2) {
+        ratingCountStart =  100 - (pageIndex-2)*10;
+        ratingCountEnd = ratingCountStart-10;
     }
 
-    if(pageIndex > 12) {
+    if(ratingCountEnd <= 0) {
         res.json({items:[]});
         return;
     }
@@ -156,9 +108,8 @@ app.get('/productsPaged/:pageIndex/:tag', async function(req, res) {
     const models = await querySnapshot
         .orderBy('stats.ratingCount','desc')
         .startAt(ratingCountStart).endBefore(ratingCountEnd)
-        .select('id','name','coverImg','stats','flag')
+        .select('id','name','coverImg','stats','flag','type')
         .get();
-
 
     console.log(models.size);
 
@@ -186,6 +137,44 @@ app.get('/productsHome', async function(req, res) {
     res.json({items:products});
   
 });
+
+const fs = require('fs')
+let imglist = []
+app.get('/check', async function(req, res) {
+    const models = await db.collection(tname).get();
+    //console.log(models);
+    var file = fs.createWriteStream('array.txt');
+    models.forEach((doc) => {
+        let item = doc.data();
+
+        //console.log(item.id);
+
+        for (var j = 0, lenVer = item.modelVersions.length; j < lenVer; j++) {
+
+            for (var k = 0, lenImgs = item.modelVersions[j].images.length; k < lenImgs; k++) {
+                //console.log(item.modelVersions[j].images[k].url);
+                let img = item.modelVersions[j].images[k];
+
+                // const path = 'H:\\GitProject\\vue3\\model4ai\\src\\assets\\images\\' + img.url;
+                //
+                // try {
+                //     if (!fs.existsSync(path)) {
+                //         //imglist.push(img.url);
+                //         file.write(`${img.url}\n`)
+                //         //console.log(""+img.url+"',");
+                //     }
+                // } catch(err) {
+                //     console.error(err)
+                // }
+            }
+        }
+
+
+    });
+    file.end();
+    //console.log(imglist);
+});
+
 
 app.get('/products', async function(req, res) {
 
@@ -248,13 +237,16 @@ app.post('/auth/signin', jsonParser, async function (request, response) {
         var token = jwt.sign({ id: request.body.username }, secret);
 
         snapshot.forEach(doc => {
-            response.json({ret:0, user: {username: doc.data().username,avatar: doc.data().avatar, accessToken: token}});
+            let user = doc.data();
+            user.accessToken = token;
+            response.json({ret:0, user: user});
         });
     }
 });
 
 app.post('/auth/signup', jsonParser, async function (request, response) {
     console.log(request.body);
+    request.body.createtime = new Date();
     // Add a new document in collection "cities" with ID 'LA'
     const res = await db.collection('musers').doc(request.body.username).set(request.body);
     response.json({data:{message:'注册成功'}});
@@ -281,6 +273,29 @@ app.get('/user', async function (request, response) {
     console.log(request.userId);
     response.json({ret:0});
 
+});
+
+app.post('/user/profile',jsonParser, async function(request,response) {
+    let token = request.headers["x-access-token"];
+
+    if (!token) {
+        return response.status(403).send({
+            message: "No token provided!"
+        });
+    }
+
+    jwt.verify(token, secret, (err, decoded) => {
+        if (err) {
+            return response.status(401).send({
+                message: "Unauthorized!"
+            });
+        }
+        //request.userId = decoded.id;
+    });
+    console.log(request.body);
+    const userRef = db.collection('musers').doc(request.body.username);
+    const result = await userRef.set({"customizedAvatar": request.body.customizedAvatar},{merge:true}); //将新数据与现有文档合并，以避免覆盖整个文档
+    response.json({ret:0});
 });
 
 // const multer = require("multer");
