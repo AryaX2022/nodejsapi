@@ -364,6 +364,7 @@ app.post('/post/reply/:id', jsonParser, async function(req, res) {
     if(model.data().replies != null) {
         replies = model.data().replies;
     }
+    req.body.createtime = new Date();
     replies.push(req.body);
     const result = await modelRef.set({"replies": replies},{merge:true});
     res.json({ret:result});
