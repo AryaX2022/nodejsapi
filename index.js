@@ -370,6 +370,11 @@ app.post('/post/reply/:id', jsonParser, async function(req, res) {
     res.json({ret:result});
 });
 
+app.post('/post/review/:id', async  function(req,res) {
+    const modelRef = db.collection('mposts').doc(req.params.id);
+    const result = await modelRef.update({"review": FieldValue.increment(1)});
+    res.json({ret:result});
+});
 
 app.post('/model/comments/:id', jsonParser, async function(req, res) {
     console.log(req.params.id);
