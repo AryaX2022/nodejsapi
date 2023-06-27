@@ -62,8 +62,10 @@ app.get('/', (req, res) => {
 	res.json({"msg":"Alive"});
 });
 
-app.get('/liverender', (req, res) => {
+const nodeCron = require("node-cron");
+const job = nodeCron.schedule("*/10 * * * *", requestRender);
 
+function requestRender() {
     https.get('https://caomeio.onrender.com/', res => {
         let data = [];
         const headerDate = res.headers && res.headers.date ? res.headers.date : 'no response date';
@@ -84,6 +86,11 @@ app.get('/liverender', (req, res) => {
     }).on('error', err => {
         console.log('Error: ', err.message);
     });
+}
+
+app.get('/liverender', (req, res) => {
+
+    requestRender();
 
     res.json({ret:1});
 });
