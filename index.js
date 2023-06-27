@@ -5,6 +5,19 @@ const https = require('https');
 const { initializeApp, cert } = require('firebase-admin/app');
 const { getFirestore } = require('firebase-admin/firestore');
 
+const { S3Client, PutObjectCommand, GetObjectCommand, ListObjectsV2Command } = require("@aws-sdk/client-s3");
+const { getSignedUrl } = require("@aws-sdk/s3-request-presigner");
+
+const s3Client = new S3Client({
+    credentials: {
+        accessKeyId: "jxxpimx7rapd6eg6rqgimfmvh6za",
+        secretAccessKey: "j2ns2h5er2o5zj2y4mpxp4tn5ycvbx2dvlp67fubif4e6vnm2vxoc",
+    },
+    region: "us-1",
+    endpoint: "https://gateway.storjshare.io",
+});
+
+
 var jwt = require("jsonwebtoken");
 var bodyParser = require('body-parser')
 // create application/json parser
@@ -31,7 +44,7 @@ const serviceAccount = {
 const cors = require('cors');
 app.use(cors({
     //origin: ['http://127.0.0.1:5174','http://127.0.0.1:5173']
-    origin: ['http://127.0.0.1:5174','http://127.0.0.1:5173', 'https://ai-lib.web.app','https://ai-bridge.web.app','https://model4ai.web.app','https://model4ai.netlify.app','https://ai1001.web.app']
+    origin: ['http://localhost:3000','http://127.0.0.1:5174','http://127.0.0.1:5173', 'https://ai-lib.web.app','https://ai-bridge.web.app','https://model4ai.web.app','https://model4ai.netlify.app','https://ai1001.web.app']
 }));
 
 initializeApp({
@@ -47,6 +60,32 @@ const { collection, DocumentData, addDoc, getDocs, setDoc, doc, updateDoc, incre
 app.get('/', (req, res) => {
     console.log("Good");
 	res.json({"msg":"Alive"});
+});
+
+app.get('/liverender', (req, res) => {
+
+    https.get('https://caomeio.onrender.com/', res => {
+        let data = [];
+        const headerDate = res.headers && res.headers.date ? res.headers.date : 'no response date';
+        console.log('Status Code:', res.statusCode);
+        console.log('Date in Response header:', headerDate);
+
+        res.on('data', chunk => {
+            data.push(chunk);
+        });
+
+        res.on('end', () => {
+            console.log('Response ended: ');
+            const iamlive = JSON.parse(Buffer.concat(data).toString());
+            console.log(iamlive);
+            console.log();
+
+        });
+    }).on('error', err => {
+        console.log('Error: ', err.message);
+    });
+
+    res.json({ret:1});
 });
 
 app.get('/transfer', async function(req, res){
@@ -124,14 +163,16 @@ app.get('/productsPaged/:pageIndex/:tag', async function(req, res) {
 });
 
 app.get('/productsHome', async function(req, res) {
-
+    console.log("Query..");
     let modelsRef = await db.collection(tname)
-	const models = await modelsRef.select('id','name','coverImgUrl','stats').get();
-	//console.log(models);
+	const models = await modelsRef.select('id','name','coverImg','stats').get();
+	console.log("Done1");
     var products = []
     models.forEach((doc) => {
         products.push(doc.data());
+        console.log(doc.data().name);
     });
+    console.log(products.length);
 	products.sort(compare);
     //return products;
     res.json({items:products});
@@ -395,5 +436,112 @@ app.get('/model/comments/:id', async function(req, res) {
     const model = await db.collection('mcomments').doc(req.params.id.toString()).get();
     res.json({item:model.data()});
 });
+
+
+app.post("/v/presign", jsonParser,async function (req, res) {
+    try {
+        console.log(req.body);
+        let params = {
+            Bucket: "demo-bucket",
+            Key: req.body.key,
+        };
+
+        let command = new PutObjectCommand(params);
+        const signedUrl = await getSignedUrl(s3Client, command, {
+            expiresIn: 600,
+        });
+        console.log(signedUrl);
+        res.json({ url: signedUrl });
+    } catch (err) {
+        console.error(err);
+    }
+});
+
+
+app.put('/v/add', jsonParser,async function (request, response) {
+    // let token = request.headers["x-access-token"];
+    //
+    // if (!token) {
+    //     return response.status(403).send({
+    //         message: "No token provided!"
+    //     });
+    // }
+    //
+    // jwt.verify(token, secret, (err, decoded) => {
+    //     if (err) {
+    //         return response.status(401).send({
+    //             message: "Unauthorized!"
+    //         });
+    //     }
+    //     //request.userId = decoded.id;
+    // });
+
+    const params = {
+        Bucket: 'demo-bucket',
+        Key: request.body.filename
+    }
+
+    let command = new GetObjectCommand(params);
+    const url = await getSignedUrl(s3Client, command);
+    console.log(url);
+    request.body.defaultVideoUrl = url;
+
+    request.body.createtime = new Date();
+    const res = await db.collection('vitems').add(request.body);
+
+    response.json({ret:res.id});
+
+});
+
+async function getMediaUrlAndSave2Db(bucket, key) {
+    const params = {
+        Bucket: bucket,
+        Key: key
+    }
+
+    let command = new GetObjectCommand(params);
+    const url = await getSignedUrl(s3Client, command);
+    console.log(url);
+
+    //Now save this url into db
+}
+
+app.post('/v/list', jsonParser, async function (request, response)  {
+    let bucket = 'media2023'
+
+    const command = new ListObjectsV2Command({
+        Bucket: bucket,
+        // The default and maximum number of keys returned is 1000. This limits it to
+        // one for demonstration purposes.
+        MaxKeys: 100,
+    });
+
+    try {
+        let isTruncated = true;
+
+        //console.log("Your bucket contains the following objects:\n")
+        //let contents = "";
+
+        //返回所有的，每次返回最多100
+        while (isTruncated) {
+            const { Contents, IsTruncated, NextContinuationToken } = await s3Client.send(command);
+
+            for (const item of Contents) {
+                await getMediaUrlAndSave2Db(bucket, item.Key);
+            }
+
+            // const contentsList = Contents.map((c) => ` • ${c.Key}`).join("\n");
+            // contents += contentsList + "\n";
+            isTruncated = IsTruncated;
+            command.input.ContinuationToken = NextContinuationToken;
+        }
+        //console.log(contents);
+
+    } catch (err) {
+        console.error(err);
+    }
+
+    response.json({ret:1});
+})
 
 app.listen(3001, () => console.log(('listening :)')))
