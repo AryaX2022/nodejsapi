@@ -63,7 +63,8 @@ app.get('/', (req, res) => {
 });
 
 const nodeCron = require("node-cron");
-const job = nodeCron.schedule("*/10 * * * *", requestRender);
+const job = nodeCron.schedule("*/1 * * * *", requestRender);
+job.start();
 
 function requestRender() {
     https.get('https://caomeio.onrender.com/', res => {
